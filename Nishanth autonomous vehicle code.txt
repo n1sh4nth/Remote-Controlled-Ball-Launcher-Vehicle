@@ -1,0 +1,336 @@
+﻿// C++ code
+//Setting all pins to variables
+const int Motor1Pin1 = 3;
+const int Motor1Pin2 = 2;e
+const int Motor2Pin1 = 5;
+const int Motor2Pin2 = 4;
+const int BackSensorEcho = 6;
+const int BackSensorTrig = 7;
+const int buzzer = 8;
+const int MotorStateButton = 9;
+const int TurnStateButton = 10;
+const int FrontSensorEcho = 6;
+const int FrontSensorTrig = 7;
+const int TurnTime = 1000;
+
+
+//Setting all operational variables
+int MotorState = -1;
+int TurnState = 0;
+int OldMotorState = 0;
+int OldTurnState = 0;
+int delayTime = 10;
+int MotorStateButtonHoldTime = 0;
+int TurnStateButtonHoldTime = 0;
+
+
+void setup()
+{
+  //Setup Pins
+  Serial.begin(9600);
+  pinMode(Motor1Pin1, OUTPUT);
+  pinMode(Motor1Pin2, OUTPUT);
+  pinMode(Motor2Pin1, OUTPUT);
+  pinMode(Motor2Pin2, OUTPUT);
+  pinMode(buzzer, OUTPUT);
+  pinMode(MotorStateButton, INPUT);
+  pinMode(TurnStateButton, INPUT);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void loop()
+{
+ //run a loop
+//The delay time is added for the backup buzzer
+//So when it is backing up the time it takes for this code to reach the buzzer code changes
+  for (int x = 0; x < (delayTime/10); x++)
+  {
+      delay(10);
+      if(digitalRead(TurnStateButton) == HIGH) // If button is pressed
+        {
+          TurnStateButtonHoldTime = TurnStateButtonHoldTime + 1; // Add to Timer
+        } else {
+          // If button is let go or not pressing the button
+          if(TurnStateButtonHoldTime >= 60) // If Timer > 60
+          {
+        //Turn off turning and set timer back to 0
+            TurnState = 0;
+            TurnStateButtonHoldTime = 0;
+          }
+        // If button timer is held for less than 30 cycles but is held for at least for 1 cycle
+          if(TurnStateButtonHoldTime < 30 && TurnStateButtonHoldTime > 0)
+          {
+        //Turn right and set timer back to 0
+            TurnState = -1;
+            TurnStateButtonHoldTime = 0;
+          }
+        // If button timer is held for more than 30 cycles
+          if(TurnStateButtonHoldTime >= 30 && TurnStateButtonHoldTime < 60)
+          {
+        //Turn left and set timer back to 0
+            TurnState = 1;
+            TurnStateButtonHoldTime = 0;
+          }
+          //If button is not being pressed turn off timer
+          TurnStateButtonHoldTime = 0;
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        //SAME EXACT CODE AS ABOVE 
+        //CONTROLS FORWARDS AND BACKWARDS AND OFF
+        //THE THRESHOLDS FOR THE HOLDING TIME IS DIFFERENT
+
+
+        if(digitalRead(MotorStateButton) == HIGH)
+        {
+          MotorStateButtonHoldTime = MotorStateButtonHoldTime + 1;
+        } else {
+          if(MotorStateButtonHoldTime >= 22)
+          {
+            MotorState = 0;
+            MotorStateButtonHoldTime = 0;
+          }
+          if(MotorStateButtonHoldTime < 12 && MotorStateButtonHoldTime > 0)
+          {
+            MotorState = -1;
+            MotorStateButtonHoldTime = 0;
+          }
+          if(MotorStateButtonHoldTime >= 12 && MotorStateButtonHoldTime < 22)
+          {
+            MotorState = 1;
+            MotorStateButtonHoldTime = 0;
+          }
+          MotorStateButtonHoldTime = 0;
+        }
+
+
+        // If the motor changes from going backwards to forwards or left to right
+       if(OldMotorState != MotorState || OldTurnState != TurnState)
+       {
+        //Change all motors to low and delay to prevent breaking of motors
+          digitalWrite(Motor1Pin1, LOW);
+          digitalWrite(Motor1Pin2, LOW);
+          digitalWrite(Motor2Pin1, LOW);
+          digitalWrite(Motor2Pin2, LOW);
+          delay(200);
+         OldMotorState = MotorState;
+         OldTurnState = TurnState;
+         
+       }
+       SetMotors(MotorState);
+       MotorTurn(TurnState);
+  }
+
+
+
+
+//If wheels moving forward
+  if(MotorState == 1 && TurnState == 0)
+  {
+//Check the front sensor and find the distance
+    float FrontSensorCm = 0.01723 * readUltrasonicDistance(FrontSensorTrig, FrontSensorEcho);
+    Serial.println(FrontSensorCm);
+    // If the sensor is 15 cm or closer  
+    if(FrontSensorCm < 15)
+    {
+     // Turn right
+      TurnState = 1;
+      MotorState = 0;
+      for (int x = 0; x < (TurnTime/10); x++)
+      {
+        delay(25);
+         if(OldMotorState != MotorState || OldTurnState != TurnState)
+         {
+            digitalWrite(Motor1Pin1, LOW);
+            digitalWrite(Motor1Pin2, LOW);
+            digitalWrite(Motor2Pin1, LOW);
+            digitalWrite(Motor2Pin2, LOW);
+            delay(200);
+           OldMotorState = MotorState;
+           OldTurnState = TurnState;
+         }
+         SetMotors(MotorState);
+         MotorTurn(TurnState);
+      }
+     // Go forward with no steering
+      TurnState = 0;
+      MotorState = 1;
+      for (int x = 0; x < (TurnTime/10); x++)
+      {
+          delay(25);
+         if(OldMotorState != MotorState || OldTurnState != TurnState)
+         {
+            digitalWrite(Motor1Pin1, LOW);
+            digitalWrite(Motor1Pin2, LOW);
+            digitalWrite(Motor2Pin1, LOW);
+            digitalWrite(Motor2Pin2, LOW);
+            delay(200);
+           OldMotorState = MotorState;
+           OldTurnState = TurnState;
+         }
+         SetMotors(MotorState);
+         MotorTurn(TurnState);
+         SetMotors(MotorState);
+         MotorTurn(TurnState);
+      }
+      // Steer back to the left to aim towards normal path
+      TurnState = -1;
+      MotorState = 0;
+      for (int x = 0; x < (TurnTime/10); x++)
+      {
+        delay(25);
+         if(OldMotorState != MotorState || OldTurnState != TurnState)
+         {
+            digitalWrite(Motor1Pin1, LOW);
+            digitalWrite(Motor1Pin2, LOW);
+            digitalWrite(Motor2Pin1, LOW);
+            digitalWrite(Motor2Pin2, LOW);
+            delay(200);
+           OldMotorState = MotorState;
+           OldTurnState = TurnState;
+         }
+         SetMotors(MotorState);
+         MotorTurn(TurnState);
+         SetMotors(MotorState);
+         MotorTurn(TurnState);
+      }
+     //Go back forward to continue path
+      TurnState = 0;
+      MotorState = 1;
+    }
+  }
+
+
+ // If Wheels moving backwards
+  if((MotorState == -1) && (TurnState == 0))
+  {
+    //Find distance between back sensor and object / wall
+    float BackSensorCm = 0.01723 * readUltrasonicDistance(BackSensorTrig, BackSensorEcho);
+   // If distance is less than 3 cm
+    if(BackSensorCm < 3)
+    {
+     //Stop all movement and set to normal timer 
+      MotorState = 0;
+      delayTime = 10;
+    } else if(BackSensorCm < 10.00)
+    {
+      //If less than 10 cm slow down the code by increasing the # of times it delays at the start
+     //This means its gonna run the loop 45 times and delay each time by 10 ms and check buttons
+    //The after it will play the buzzer and as the delay timer increases the slower it takes for the code to reach the buzzer code which brings the effect of it beeping faster as you move towards it
+      delayTime = 450;
+    } else if(BackSensorCm < 15.00)
+    {
+      //If less than 15 cm slow down the code by increasing the # of times it delays at the start
+      delayTime = 600;
+    }
+    if((BackSensorCm < 15))
+    {
+      //If less than 15 cm buzz
+      tone(buzzer, 1000, 300);
+    } else {
+      //If it's greater than 15 cm set back to normal time with no buzzing
+      delayTime = 10;
+    }
+  }
+}
+
+
+//Set motors to whatever the variable is
+void SetMotors(int MotorS)
+{
+// If the car is not turning
+  if(TurnState == 0)
+  {
+    //And the input is 0 turn off the motors
+    if(MotorS == 0)
+     {
+        digitalWrite(Motor1Pin1, LOW);
+        digitalWrite(Motor1Pin2, LOW);
+        digitalWrite(Motor2Pin1, LOW);
+        digitalWrite(Motor2Pin2, LOW);
+     } else if (MotorS == 1)
+       {
+        //And the input is 1 turn on the motors going forward
+          digitalWrite(Motor1Pin1, HIGH);
+          digitalWrite(Motor1Pin2, LOW);
+          digitalWrite(Motor2Pin1, HIGH);
+          digitalWrite(Motor2Pin2, LOW);
+       } else if (MotorS == -1)
+       {
+        //And the input is -1 turn on the motors going backwards
+          digitalWrite(Motor1Pin1, LOW);
+          digitalWrite(Motor1Pin2, HIGH);
+          digitalWrite(Motor2Pin1, LOW);
+          digitalWrite(Motor2Pin2, HIGH);
+       }
+  }
+}
+
+
+
+
+
+
+
+
+//Basically the same function as motor state but instead of moving backwards and forwards it moves right and left
+void MotorTurn(int TurnS)
+{
+    if (TurnS == 1)
+       {
+          digitalWrite(Motor1Pin1, HIGH);
+          digitalWrite(Motor1Pin2, LOW);
+          digitalWrite(Motor2Pin1, LOW);
+          digitalWrite(Motor2Pin2, HIGH);
+       } else if (TurnS == -1)
+       {
+          digitalWrite(Motor1Pin1, LOW);
+          digitalWrite(Motor1Pin2, HIGH);
+          digitalWrite(Motor2Pin1, HIGH);
+          digitalWrite(Motor2Pin2, LOW);
+       }
+}
+
+
+//Function takes 2 pins one connected to sensor trigger and the other to echo
+long readUltrasonicDistance(int triggerPin, int echoPin)
+{
+  pinMode(triggerPin, OUTPUT);  // Clear the trigger
+  digitalWrite(triggerPin, LOW);
+  delayMicroseconds(2);
+  // Sets the trigger pin to HIGH state for 10 microseconds
+  digitalWrite(triggerPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(triggerPin, LOW);
+  pinMode(echoPin, INPUT);
+  // Reads the echo pin, and returns the sound wave travel time in microseconds
+  return pulseIn(echoPin, HIGH);
+)
